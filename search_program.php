@@ -7,6 +7,7 @@ use seekquarry\yioop\library\PhraseParser;
 use seekquarry\yioop\library\processors\HtmlProcessor;
 use classes\invertedindex as InvertedIndex;
 use classes\rankbm25 as RankBM25;
+use classes\rankbm25f as RankBM25f;
 use classes\rank as Rank;
 
 spl_autoload_register();
@@ -25,9 +26,29 @@ $doc_files = glob($cmd_line_dir."/*.html", GLOB_NOSORT);
 
 // setup Inverted Index
 // $inverted_index = readFiles($doc_files, $cmd_tokenization_method);
-$inverted_index = readHtmlFiles($doc_files, $cmd_tokenization_method);
-// exit();
 
+// $inverted_indices = readHtmlFiles($doc_files, $cmd_tokenization_method);
+// $inverted_index_title = $inverted_indices["title"];
+// $inverted_index_desc = $inverted_indices["desc"];
+
+if ($cmd_ranking == "bm25") {
+    $inverted_index = readHtmlFiles($doc_files, $cmd_tokenization_method);
+    $inverted_index = $inverted_index["desc"];
+    $rankBM25 = new RankBM25($inverted_index);
+
+    $terms = explode(" ", $cmd_query);
+    $rankBM25->rankBM25WithHeaps($terms, 10, $inverted_index);
+
+} else if ($cmd_ranking == "bm25f") {
+    $inverted_indices = readHtmlFiles($doc_files, $cmd_tokenization_method);
+    $inverted_index_title = $inverted_indices["title"];
+    $inverted_index_desc = $inverted_indices["desc"];
+
+    $rankBM25f = new RankBM25f($inverted_index_title);
+    $terms = explode(" ", $cmd_query);
+    $rankBM25->rankBM25fHtml($terms, 0.5, 10, $inverted_index_title, $inverted_index_desc);
+
+}
 // setup html files
 // $html_proc = new HtmlProcessor(array(), 20000, HtmlProcessor::CENTROID_SUMMARIZER);
 // // var_dump(HtmlProcessor\DESCRIPTION);
@@ -46,6 +67,7 @@ $inverted_index = readHtmlFiles($doc_files, $cmd_tokenization_method);
 
 // exit();
 
+//bm25
 
 
 //bm25f
@@ -57,15 +79,15 @@ $inverted_index = readHtmlFiles($doc_files, $cmd_tokenization_method);
 // $terms = preg_replace('!\s+!', ' ', $terms);
 // var_dump($terms);
 // exit();
-print("here\n");
-$rank = new Rank();
-print("here\n");
-print("here2\n");
-$rankBM25 = new RankBM25($inverted_index);
-print("here\n");
-$terms = explode(" ", $cmd_query);
-print("here\n");
-$rankBM25->rankBM25fHtml($terms, 0.5, 10, $inverted_index);
+// print("here\n");
+// $rank = new Rank();
+// print("here\n");
+// print("here2\n");
+// $rankBM25 = new RankBM25($inverted_index_title);
+// print("here\n");
+// $terms = explode(" ", $cmd_query);
+// print("here\n");
+// $rankBM25->rankBM25fHtml($terms, 0.5, 10, $inverted_index_title);
 
 
 // $rankBM25->rankBM25WithHeaps($terms, 3);
@@ -118,16 +140,16 @@ function readHtmlFiles($doc_files, $cmd_tokenization_method)
     // setup html files
     $html_proc = new HtmlProcessor(array(), 20000, HtmlProcessor::CENTROID_SUMMARIZER);
 
-    $inverted_index = new InvertedIndex();
-    
+    $inverted_index_desc = new InvertedIndex();
+    $inverted_index_title = new InvertedIndex();
+
     foreach ($doc_files as $doc_index=>$doc) {
         print("$doc\n");
         // open file
         $contents = file_get_contents($doc);
         $res = $html_proc->process($contents, "dummy");
-        print("Title: ".$res[CrawlConstants::TITLE]."\n");
+
         $line = preg_replace('!\s+!', ' ', $res[CrawlConstants::DESCRIPTION]);
-        print("Description: ");
         // lowercase tokens
         $line = strtolower($line);
         // print($line."\n");
@@ -136,8 +158,7 @@ function readHtmlFiles($doc_files, $cmd_tokenization_method)
         // remove punctuations and special characters
         $line = preg_replace('/[^A-Za-z0-9\- ]/', "", $line);
 
-
-        // split tokens
+        // split DESCRIPTION tokens
         $tokens = explode(" ", trim($line));
         foreach ($tokens as $token) {
             if ($token == "") {
@@ -147,7 +168,7 @@ function readHtmlFiles($doc_files, $cmd_tokenization_method)
                 if ($cmd_tokenization_method == "chargram") {
                     $tokens_gram = PhraseParser::getNGramsTerm(array($token), 5);
                     foreach ($tokens_gram as $gram) {
-                        $inverted_index->{'addTerm'}($gram, $doc_index, $word_counter);
+                        $inverted_index_desc->{'addTerm'}($gram, $doc_index, $word_counter);
                     }
                 // case: stem selected
                 } else {
@@ -155,17 +176,52 @@ function readHtmlFiles($doc_files, $cmd_tokenization_method)
                         $result = PhraseParser::stemTerms($token, 'en-US');
                         $token = $result[0];
                     }
-                    $inverted_index->{'addTerm'}($token, $doc_index, $word_counter);
+                    $inverted_index_desc->{'addTerm'}($token, $doc_index, $word_counter);
                 }
             }
             $word_counter++;
         }
+
+        $line = preg_replace('!\s+!', ' ', $res[CrawlConstants::TITLE]);
+        // lowercase tokens
+        $line = strtolower($line);
+        $word_counter = 0;
+        // remove punctuations and special characters
+        $line = preg_replace('/[^A-Za-z0-9\- ]/', "", $line);
+
+        // split DESCRIPTION tokens
+        $tokens = explode(" ", trim($line));
+        foreach ($tokens as $token) {
+            if ($token == "") {
+                continue;
+            } else {
+                // case: chargram selected
+                if ($cmd_tokenization_method == "chargram") {
+                    $tokens_gram = PhraseParser::getNGramsTerm(array($token), 5);
+                    foreach ($tokens_gram as $gram) {
+                        $inverted_index_title->{'addTerm'}($gram, $doc_index, $word_counter);
+                    }
+                // case: stem selected
+                } else {
+                    if ($cmd_tokenization_method == "stem") {
+                        $result = PhraseParser::stemTerms($token, 'en-US');
+                        $token = $result[0];
+                    }
+                    $inverted_index_title->{'addTerm'}($token, $doc_index, $word_counter);
+                }
+            }
+            $word_counter++;
+        }
+
+
         
     }
-    $inverted_index->sortPostings();
-    print("Average doc length: ".$inverted_index->calcAvgDocLength()."\n");
-    // var_dump($inverted_index);
-    return $inverted_index;    
+    $inverted_index_desc->sortPostings();
+    $inverted_index_title->sortPostings();
+    print("Average TITLE doc length: ".$inverted_index_title->calcAvgDocLength()."\n");
+    print("Average DESC doc length: ".$inverted_index_desc->calcAvgDocLength()."\n");
+
+    return array("title" => $inverted_index_title, "desc" => $inverted_index_desc);    
 }
 
 function readFiles($doc_files, $cmd_tokenization_method) 
