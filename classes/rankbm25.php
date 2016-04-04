@@ -90,10 +90,10 @@ class RankBM25 {
             $score = 0;
             while (explode(":", $this->terms->top()["next_doc"])[0] == $d) {
                 $t = $this->terms->top()["term"];
-                $n = $this->num_of_docs;
-                $n_t = count($inverted_index->postings[$t]);
+                // $n = $this->num_of_docs;
+                // $n_t = count($inverted_index->postings[$t]);
 
-                $score += log(floatval($n / $n_t), 2) * self::scoreBM25($t, $d, $inverted_index);
+                $score += self::scoreBM25($t, $d, $inverted_index);
                 print("score: $score\n");
                 self::nextDocTop($inverted_index);
             }
@@ -126,10 +126,6 @@ class RankBM25 {
 
         $new_arr = array("term" => $term, "next_doc" => $next_doc);
         $this->terms->insert($new_arr);
-    }
-
-    public function replaceTopScore() {
-
     }
 
     public function calcAllIdfs(&$inverted_index) 

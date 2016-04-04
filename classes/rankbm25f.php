@@ -2,21 +2,24 @@
 
 namespace classes;
 
-class RankBM25 {
+class RankBM25f {
 
     public $results;
     public $terms;
     // public $inverted_index;
     public $num_of_docs;
-    public $term_idfs;
+    public $term_idfs_title;
+    public $term_idfs_desc;
 
     // Html processing variables
-    public $html_results;
-    public $html_terms;
+    // public $html_results;
+    // public $html_terms;
 
 
     public function __construct(&$inverted_index_title) {
-        $this->term_idfs = array();
+        print("here\n");
+        $this->term_idfs_title = array();
+        $this->term_idfs_desc = array();
         $this->results = new RankHeap();
         $this->terms = new TermHeap();
         // $this->inverted_index = $inverted_index;
@@ -29,13 +32,23 @@ class RankBM25 {
     public function rankBM25fHtml($terms, $alpha, $k, &$inverted_index_title, &$inverted_index_desc) 
     {
         foreach ($terms as $term) {
-            $temp_arr = array("term" => $term, "next_doc" => $inverted_index->nextDoc($term, -INF.":".-INF));
+            $n1 = $inverted_index_title->nextDoc($term, -INF.":".-INF);
+            $n2 = $inverted_index_desc->nextDoc($term, -INF.":".-INF);
+            $n1 = explode(":", $n1)[0];
+            $n2 = explode(":", $n2)[0];
+            $next = min($n1, $n2);
+
+            $temp_arr = array("term" => $term, "next_doc" => $next);
             $this->terms->insert($temp_arr);
         }
 
-        while (explode(":", $this->terms->top()["next_doc"])[0] < $inverted_index->num_of_docs) {
+        while (true) {
             $d = explode(":", $this->terms->top()["next_doc"])[0];
             print("d: $d\n");
+            if ($d >= $this->num_of_docs) {
+                break;
+            }
+
             if ($d == "INF") {
                 break;
             }
@@ -45,15 +58,15 @@ class RankBM25 {
             }
 
             $score = 0;
-            print("here");
+            print("here2\n");
             while (explode(":", $this->terms->top()["next_doc"])[0] == $d) {
                 $t = $this->terms->top()["term"];
-                $n = $this->num_of_docs;
-                $n_t = count($inverted_index->postings[$t]);
+                // $n = $this->num_of_docs;
+                // $n_t = count($inverted_index->postings[$t]);
 
-                $score += log(floatval($n / $n_t), 2) * self::scoreBM25($t, $d, $inverted_index);
+                $score += self::scoreBM25f($t, $d, $inverted_index_title, $inverted_index_desc, $alpha);
                 print("score: $score\n");
-                self::nextDocTop($inverted_index);
+                self::nextDocTop($inverted_index_title, $inverted_index_desc);
             }
 
             if ($this->results->isEmpty()) {
@@ -70,7 +83,7 @@ class RankBM25 {
         var_dump($this->results);
     }
 
-    public function nextDocTop(&$inverted_index) {
+    public function nextDocTop(&$inverted_index_title, &$inverted_index_desc) {
         $temp_top = $this->terms->top();
         $this->terms->extract();
 
@@ -80,22 +93,35 @@ class RankBM25 {
         $doc_id = $exp[0];
         $pos = $exp[1];
         
-        $next_doc = $inverted_index->nextDoc($term, "$doc_id:$pos");
+        // $next_doc = $inverted_index->nextDoc($term, "$doc_id:$pos");
+
+        $n1 = $inverted_index_title->nextDoc($term, "$doc_id:$pos");
+        $n2 = $inverted_index_desc->nextDoc($term, "$doc_id:$pos");
+
+        $v1 = explode(":", $n1)[0];
+        $v2 = explode(":", $n2)[0];
+        if ($v1 < $v2) {
+            $next_doc = $n1;
+        } else {
+            $next_doc = $n2;
+        }
 
         $new_arr = array("term" => $term, "next_doc" => $next_doc);
         $this->terms->insert($new_arr);
     }
 
-    public function replaceTopScore() {
-
-    }
-
-    public function calcAllIdfs(&$inverted_index) 
+    public function calcAllIdfs(&$inverted_index_title, &$inverted_index_desc) 
     {
-        $keys = array_keys($inverted_index->postings);
+        $keys = array_keys($inverted_inde_title->postings);
         foreach ($keys as $term) {
-            $t_idf = self::calcIdf($term, $inverted_index);
-            $this->term_idfs[$term] = $t_idf;
+            $t_idf = self::calcIdf($term, $inverted_index_title);
+            $this->term_idfs_title[$term] = $t_idf;
+        }
+
+        $keys = array_keys($inverted_inde_desc->postings);
+        foreach ($keys as $term) {
+            $t_idf = self::calcIdf($term, $inverted_index_desc);
+            $this->term_idfs_desc[$term] = $t_idf;
         }
         // var_dump($this->term_idfs);
     }
@@ -104,9 +130,17 @@ class RankBM25 {
     {
         $num_of_docs = $inverted_index->num_of_docs;
         // print("num_of_docs: $num_of_docs\n");
-        $docs_with_term = count($inverted_index->postings[$t]);
+        if ($inverted_index->postings[$t] == NULL) {
+            $docs_with_term = 0;
+        } else {    
+            $docs_with_term = count($inverted_index->postings[$t]);            
+        }
+
         // print("docs_with_term: $docs_with_term\n");
         $tmp = floatval($num_of_docs/$docs_with_term);
+        // var_dump($t);
+        // var_dump($inverted_index->postings["royale"]);
+        // exit();
         return log($tmp, 2);
     }
 
@@ -117,6 +151,14 @@ class RankBM25 {
         $denominator = $f_t_d + $k * ((1 - $b) + b * ($l_d/$l_avg));
         // print("dem: $denominator\n");
         return $numerator / $denominator;
+    }
+
+    public function scoreBM25f($q, $doc_id, &$inverted_index_title, &$inverted_index_desc, $alpha = 0.5) 
+    {
+        $title_score = self::scoreBM25($q, $doc_id, $inverted_index_title);
+        $desc_score = self::scoreBM25($q, $doc_id, $inverted_index_desc);
+        $score = $alpha * $title_score + (1 - $alpha) * $desc_score;
+        return $score;
     }
 
     public function scoreBM25($q, $doc_id, &$inverted_index, $k = 1.2, $b = 0.75)
@@ -130,6 +172,7 @@ class RankBM25 {
 
         // print("done\n");
 
+
         foreach ($terms as $term) {
             // var_dump($this->inverted_index->postings_sizes[$term]);
             $f_t_d = $inverted_index->postings_sizes[$term][$doc_id];
@@ -141,8 +184,10 @@ class RankBM25 {
             $tf = self::tfBM25($f_t_d, $k, $b, $l_d, $l_avg);
             // print("tf: $tf\n");
             $score += $idf * $tf;
-            // var_dump($f_t_d, $l_d, $idf, $tf, $score);
+            print("dump\n");
+            var_dump($f_t_d, $l_d, $idf, $tf, $score);
         }
+        // print("score:\n");
         // var_dump($score);
         return $score;
     }

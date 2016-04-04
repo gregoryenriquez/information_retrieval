@@ -40,14 +40,16 @@ if ($cmd_ranking == "bm25") {
     $rankBM25->rankBM25WithHeaps($terms, 10, $inverted_index);
 
 } else if ($cmd_ranking == "bm25f") {
+print("here\n");
     $inverted_indices = readHtmlFiles($doc_files, $cmd_tokenization_method);
     $inverted_index_title = $inverted_indices["title"];
     $inverted_index_desc = $inverted_indices["desc"];
-
+print("here\n");
     $rankBM25f = new RankBM25f($inverted_index_title);
+print("here\n");
     $terms = explode(" ", $cmd_query);
-    $rankBM25->rankBM25fHtml($terms, 0.5, 10, $inverted_index_title, $inverted_index_desc);
-
+    $rankBM25f->rankBM25fHtml($terms, 0.5, 10, $inverted_index_title, $inverted_index_desc);
+print("end\n");
 }
 // setup html files
 // $html_proc = new HtmlProcessor(array(), 20000, HtmlProcessor::CENTROID_SUMMARIZER);
@@ -185,6 +187,7 @@ function readHtmlFiles($doc_files, $cmd_tokenization_method)
         $line = preg_replace('!\s+!', ' ', $res[CrawlConstants::TITLE]);
         // lowercase tokens
         $line = strtolower($line);
+        print($line."\n");
         $word_counter = 0;
         // remove punctuations and special characters
         $line = preg_replace('/[^A-Za-z0-9\- ]/', "", $line);
