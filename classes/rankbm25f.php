@@ -6,15 +6,9 @@ class RankBM25f {
 
     public $results;
     public $terms;
-    // public $inverted_index;
     public $num_of_docs;
     public $term_idfs_title;
     public $term_idfs_desc;
-
-    // Html processing variables
-    // public $html_results;
-    // public $html_terms;
-
 
     public function __construct(&$inverted_index_title) {
         print("here\n");
@@ -22,11 +16,7 @@ class RankBM25f {
         $this->term_idfs_desc = array();
         $this->results = new RankHeap();
         $this->terms = new TermHeap();
-        // $this->inverted_index = $inverted_index;
         $this->num_of_docs = $inverted_index_title->num_of_docs;
-
-        // $this->html_results = array("title" => new RankHeap(), "desc" => new RankHeap());
-        // $this->html_terms = array("title" => new TermHeap(), "desc" => new TermHeap());
     }
 
     public function rankBM25fHtml($terms, $alpha, $k, &$inverted_index_title, &$inverted_index_desc) 
@@ -44,7 +34,6 @@ class RankBM25f {
 
         while (true) {
             $d = explode(":", $this->terms->top()["next_doc"])[0];
-            print("d: $d\n");
             if ($d >= $this->num_of_docs) {
                 break;
             }
@@ -53,19 +42,10 @@ class RankBM25f {
                 break;
             }
 
-            if ($d > $k) {
-                break;
-            }
-
             $score = 0;
-            print("here2\n");
             while (explode(":", $this->terms->top()["next_doc"])[0] == $d) {
                 $t = $this->terms->top()["term"];
-                // $n = $this->num_of_docs;
-                // $n_t = count($inverted_index->postings[$t]);
-
                 $score += self::scoreBM25f($t, $d, $inverted_index_title, $inverted_index_desc, $alpha);
-                print("score: $score\n");
                 self::nextDocTop($inverted_index_title, $inverted_index_desc);
             }
 
@@ -73,7 +53,6 @@ class RankBM25f {
                 $temp_arr = array("doc_id" => $d, "score" => $score);
                 $this->results->insert($temp_arr);                
             } else if ($score > $this->results->top()["score"]) {
-                // print("here\n");
                 $temp_arr = array("doc_id" => $d, "score" => $score);
                 $this->results->insert($temp_arr);
             }

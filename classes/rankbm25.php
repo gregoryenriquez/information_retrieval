@@ -6,69 +6,15 @@ class RankBM25 {
 
     public $results;
     public $terms;
-    // public $inverted_index;
     public $num_of_docs;
     public $term_idfs;
-
-    // Html processing variables
-    // public $html_results;
-    // public $html_terms;
-
 
     public function __construct(&$inverted_index) {
         $this->term_idfs = array();
         $this->results = new RankHeap();
         $this->terms = new TermHeap();
-        // $this->inverted_index = $inverted_index;
         $this->num_of_docs = $inverted_index->num_of_docs;
-
-        // $this->html_results = array("title" => new RankHeap(), "desc" => new RankHeap());
-        // $this->html_terms = array("title" => new TermHeap(), "desc" => new TermHeap());
     }
-
-    // public function rankBM25fHtml($terms, $alpha, $k, &$inverted_index) 
-    // {
-    //     foreach ($terms as $term) {
-    //         $temp_arr = array("term" => $term, "next_doc" => $inverted_index->nextDoc($term, -INF.":".-INF));
-    //         $this->terms->insert($temp_arr);
-    //     }
-
-    //     while (explode(":", $this->terms->top()["next_doc"])[0] < $inverted_index->num_of_docs) {
-    //         $d = explode(":", $this->terms->top()["next_doc"])[0];
-    //         print("d: $d\n");
-    //         if ($d == "INF") {
-    //             break;
-    //         }
-
-    //         if ($d > $k) {
-    //             break;
-    //         }
-
-    //         $score = 0;
-    //         print("here");
-    //         while (explode(":", $this->terms->top()["next_doc"])[0] == $d) {
-    //             $t = $this->terms->top()["term"];
-    //             $n = $this->num_of_docs;
-    //             $n_t = count($inverted_index->postings[$t]);
-
-    //             $score += log(floatval($n / $n_t), 2) * self::scoreBM25($t, $d, $inverted_index);
-    //             print("score: $score\n");
-    //             self::nextDocTop($inverted_index);
-    //         }
-
-    //         if ($this->results->isEmpty()) {
-    //             $temp_arr = array("doc_id" => $d, "score" => $score);
-    //             $this->results->insert($temp_arr);                
-    //         } else if ($score > $this->results->top()["score"]) {
-    //             // print("here\n");
-    //             $temp_arr = array("doc_id" => $d, "score" => $score);
-    //             $this->results->insert($temp_arr);
-    //         }
-    //     }
-    //     print("results:\n");
-    //     var_dump($this->terms);
-    //     var_dump($this->results);
-    // }
 
     public function rankBM25WithHeaps($terms, $k, &$inverted_index)
     {
@@ -83,18 +29,10 @@ class RankBM25 {
                 break;
             }
 
-            if ($d > $k) {
-                break;
-            }
-
             $score = 0;
             while (explode(":", $this->terms->top()["next_doc"])[0] == $d) {
                 $t = $this->terms->top()["term"];
-                // $n = $this->num_of_docs;
-                // $n_t = count($inverted_index->postings[$t]);
-
                 $score += self::scoreBM25($t, $d, $inverted_index);
-                print("score: $score\n");
                 self::nextDocTop($inverted_index);
             }
 
@@ -107,7 +45,7 @@ class RankBM25 {
                 $this->results->insert($temp_arr);
             }
         }
-        print("results:\n");
+        print("Results:\n");
         // var_dump($this->terms);
         var_dump($this->results);
     }
