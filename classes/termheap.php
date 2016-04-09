@@ -7,7 +7,6 @@ class TermHeap extends \SplMinHeap
 {
     public function compare($term1, $term2)
     {
-
         $pos1 = explode(":", $term1["next_doc"]);
         $next_doc1 = $pos1[0];
         $pos2 = explode(":", $term2["next_doc"]);

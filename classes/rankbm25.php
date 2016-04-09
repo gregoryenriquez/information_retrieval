@@ -45,9 +45,7 @@ class RankBM25 {
                 $this->results->insert($temp_arr);
             }
         }
-        print("Results:\n");
-        // var_dump($this->terms);
-        var_dump($this->results);
+        return $this->results;
     }
 
     public function nextDocTop(&$inverted_index) {
@@ -73,15 +71,12 @@ class RankBM25 {
             $t_idf = self::calcIdf($term, $inverted_index);
             $this->term_idfs[$term] = $t_idf;
         }
-        // var_dump($this->term_idfs);
     }
 
     public function calcIdf($t, &$inverted_index)
     {
         $num_of_docs = $inverted_index->num_of_docs;
-        // print("num_of_docs: $num_of_docs\n");
         $docs_with_term = count($inverted_index->postings[$t]);
-        // print("docs_with_term: $docs_with_term\n");
         $tmp = floatval($num_of_docs/$docs_with_term);
         return log($tmp, 2);
     }
@@ -89,37 +84,23 @@ class RankBM25 {
     public function tfBM25($f_t_d, $k, $b, $l_d, $l_avg)
     {
         $numerator = $f_t_d * ($k + 1);
-        // print("num: $numerator\n");
         $denominator = $f_t_d + $k * ((1 - $b) + b * ($l_d/$l_avg));
-        // print("dem: $denominator\n");
         return $numerator / $denominator;
     }
 
     public function scoreBM25($q, $doc_id, &$inverted_index, $k = 1.2, $b = 0.75)
     {
-        // print("q: $q, doc_id: $doc_id, k: $k, b: $b\n");
         $terms = explode(" ", $q);
-        // var_dump($terms);
         $score = 0;
         $l_avg = $inverted_index->avg_doc_length;
-        // var_dump($l_avg);
-
-        // print("done\n");
 
         foreach ($terms as $term) {
-            // var_dump($this->inverted_index->postings_sizes[$term]);
             $f_t_d = $inverted_index->postings_sizes[$term][$doc_id];
-            // print("f_t_d: $f_t_d\n");
             $l_d = $inverted_index->doc_lengths[$doc_id];
-            // print("l_d: $l_d\n");
             $idf = self::calcIdf($term, $inverted_index);
-            // print("idf: $idf\n");
             $tf = self::tfBM25($f_t_d, $k, $b, $l_d, $l_avg);
-            // print("tf: $tf\n");
             $score += $idf * $tf;
-            // var_dump($f_t_d, $l_d, $idf, $tf, $score);
         }
-        // var_dump($score);
         return $score;
     }
 

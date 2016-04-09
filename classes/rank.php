@@ -12,6 +12,7 @@ class Rank
     public $doc_vec_length;
     public $qvec_tf_idfs;
     public $qvec_length;
+    public $results;
 
     public function __construct()
     {
@@ -21,10 +22,25 @@ class Rank
         $this->doc_vec_length = array();
         $this->qvec_tf_idfs = array();
         $this->qvec_length = 0;
+        $this->results = null;
+    }
+
+    public function printResults()
+    {
+        print("Cosine Rank Results: \n");
+        $i = 0;
+        foreach ($this->results as $result) {
+            $i++;
+            print("Rank #$i"." Doc ID: ".$result["document"]." Score: ".$result["score"]."\n");
+        }
     }
 
     public function cosineRank($terms, $k_docs, &$inverted_index) 
     {
+        self::calcAllTfIdf($inverted_index, $inverted_index->num_of_docs);
+        self::calcAllVecLength($inverted_index, $inverted_index->num_of_docs);
+        self::createQueryVector($terms);
+
         $j = 0;
         $results = array();
 
@@ -44,22 +60,19 @@ class Rank
             $results[$j]["score"] = $score;
             $j++;
 
-            // print("Loop: doc: $doc_id, pos = $pos, terms = $terms score: $score\n");
-            // sleep(1);
             $res = self::cosMin($terms, $doc_id, $pos, $inverted_index);
-            // var_dump($res);
             $temp = explode(":", $res);
             $doc_id = $temp[0];
             $pos = $temp[1];
         }
         usort($results, "self::cmpScore");
-        var_dump($results);
+        $this->results = $results;
+        return $results;
 
     }
 
     public function cmpScore($result_one, $result_two)
     {
-        sleep(1);
         if ($result_one["score"] == $result_two["score"]) {
             return 0;
         }
@@ -73,7 +86,6 @@ class Rank
         $doc = INF;
         $pos = INF;
         foreach ($terms as $term) {
-            // print("start_doc: $start_doc, start_pos: $start_pos\n");
             $temp = explode(":", $inverted_index->{'nextDoc'}($term, "$start_doc:$start_pos"));
             if ($temp[0] == "INF") {
                 $temp_doc = INF;
@@ -85,16 +97,7 @@ class Rank
                 $doc = $temp_doc;
                 $pos = $temp_pos;
             } 
-            //   else if ($doc == $temp_doc) {
-            //     if ($pos > $temp_pos) {
-            //         $pos = $temp_pos;
-            //     }
-            // }
         }
-
-        $temp = "COSMIN RES: $doc:$pos\n";
-        print($temp);
-        sleep(1);
         return "$doc:$pos";
     }
 
@@ -113,11 +116,6 @@ class Rank
 
             $this->doc_vec_length[$doc_id] = $length;
         }
-        var_dump($this->doc_vec_length);
-
-        // foreach ($doc_tfs_idfs as $component) {
-        //     $doc_vec_length;
-        // }
     }
 
     public function calcAllIdfs(&$inverted_index) 
@@ -127,7 +125,7 @@ class Rank
             $t_idf = self::calcIdf($term, $inverted_index);
             $this->term_idfs[$term] = $t_idf;
         }
-        var_dump($this->term_idfs);
+        // var_dump($this->term_idfs);
     }
 
     public function calcAllTfs(&$inverted_index, $num_docs) 
@@ -165,11 +163,8 @@ class Rank
     public function calcIdf($t, &$inverted_index)
     {
         $num_of_docs = $inverted_index->num_of_docs;
-        // print("num of docs: ".$num_of_docs."\n");
         $docs_with_term = count($inverted_index->postings[$t]);
-        // print("docs with term: ".$docs_with_term."\n");
         $tmp = $num_of_docs/$docs_with_term;
-        // print("$tmp\n");
         return log($tmp, 2);
     }
 
@@ -191,7 +186,7 @@ class Rank
             $this->qvec_tf_idfs[$key] = 0;
         }
 
-        $terms = explode(" ", $q);
+        $terms = $q;
         foreach ($terms as $term) {
             $this->qvec_tf_idfs[$term] = 1;
         }
@@ -213,17 +208,12 @@ class Rank
 
     public function simVec($doc_id, $q) 
     {
-        $q = self::createQueryVector($q);
+        $terms = explode(" ", $q);
+        $q = self::createQueryVector($terms);
         $d = $this->doc_tfs_idfs[$doc_id];
-
-        // var_dump($q);
-        // var_dump($d);
 
         if (count($d) != count($q)) {
             self::printDebug("ERROR: vector lengths are different\n");
-            // print("doc_id = $doc_id\n");
-            // var_dump($this->doc_tfs_idfs);
-            // var_dump($q);
             return -1;
         }
         $keys = array_keys($d);
@@ -235,8 +225,6 @@ class Rank
         $l1 = $this->doc_vec_length[$doc_id];
         $l2 = self::calcVectorLength($q);
 
-        var_dump($l1);
-        var_dump($l2);
         $denominator = $l1 * $l2;
         return $numerator/$denominator;
     }

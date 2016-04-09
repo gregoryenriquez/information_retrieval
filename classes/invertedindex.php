@@ -30,7 +30,6 @@ class InvertedIndex
         }
 
         $this->doc_lengths[$doc_id] += 1;
-
         $this->num_of_docs = max($this->num_of_docs, $doc_id + 1);
 
         if ($this->postings[$t] == NULL) {
@@ -41,8 +40,8 @@ class InvertedIndex
         if ($this->postings_sizes[$t] == NULL) {
             $this->postings_sizes[$t][$doc_id] = 0;
         }
-        $this->postings_sizes[$t][$doc_id]++;
 
+        $this->postings_sizes[$t][$doc_id]++;
         $this->last_posts[$t] = "$doc_id:$position";
     }
 
@@ -137,9 +136,7 @@ class InvertedIndex
             return INF.":".INF;
         }
 
-        if ($this->postings_sizes[$t][$current_doc] == NULL 
-            || $tmp_last_pos <= $current_pos) {
-            // || $this->postings[$t][$current_doc][$tmp_last_pos] <= $current_pos) {
+        if ($this->postings_sizes[$t][$current_doc] == NULL || $tmp_last_pos <= $current_pos) {
             self::printDebug("WARN: tmp_last_pos is zero or last_pos value is less than current\n");
             return INF.":".INF;
         }
@@ -165,7 +162,6 @@ class InvertedIndex
         }
 
         $pos = self::binarySearch($t, $low, $high, $current_doc, $current_pos);
-        // var_dump($this->postings[$t][$current_doc]);
         $pos = $this->postings[$t][$current_doc][$pos];
         return "$current_doc:$pos";
     }
@@ -182,9 +178,6 @@ class InvertedIndex
             return -INF;
         }
 
-        // var_dump($tmp_size);
-        // var_dump($this->postings[$t][$current_doc]);
-        // var_dump($this->postings[$t][$current_doc][0]);
         if ($tmp_size == 0 || $this->postings[$t][$current_doc][0] >= $current_pos) {
             self::printDebug("ERROR: tmp_size is zero or first_pos value is greater than current\n");
             return -INF.":".-INF;
@@ -211,8 +204,6 @@ class InvertedIndex
             $low = 0;
         }
 
-        // var_dump($low, $high, $current_doc, $current_pos);
-        // print("\n");
         $pos = self::binarySearchPrev($t, $low, $high, $current_doc, $current_pos);
         $pos = $this->postings[$t][$current_doc][$pos];
         return "$current_doc:$pos";
@@ -226,14 +217,9 @@ class InvertedIndex
 
         if ($high - $low <= 1) {
             if ($current_pos < $low_val) {
-                // print "here";
                 return $low;
-                // return $this->postings[$t][$current_doc][$low];                
             } else {
-                // print "here2"; this
-                // var_dump($this->postings[$t][$current_doc][$high]);
                 return $high;
-                // return $this->postings[$t][$current_doc][$high];
             }
         } else if ($current_pos >= $mid_val) {
             return self::binarySearch($t, $mid, $high, $current_doc, $current_pos);

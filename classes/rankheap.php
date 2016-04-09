@@ -10,18 +10,26 @@ class RankHeap extends \SplMaxHeap
     {
         $score1 = $result1["score"];
         $score2 = $result2["score"];
-
         if ($score1 == $score2) {
             return 0;
         }
-
-        print("score1: $score1 score2: $score2\n");
         if ($score1 > $score2) {
-            print("returning 1\n");
             return 1;
         } else {
-            print("returning -1\n");
             return -1;
+        }
+    }
+
+    public function printHeap() 
+    {   
+        $i = 0;
+        while ($this->valid()) {
+            $i++;
+            $node = $this->current();
+            $doc_id = $node["doc_id"];
+            $score = $node["score"];
+            print("Rank #$i Doc ID: $doc_id, Score: $score\n");
+            $this->next();
         }
     }
 }
