@@ -1,0 +1,17 @@
+{
+    "name": "vendor/hw2_project",
+    "description": "Search program",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Gregory Enriquez",
+            "email": "gregoryenriquez@gmail.com"
+        }
+    ],
+    "config": {
+        "secure-http": false
+    },
+    "require": {
+        "seekquarry/yioop": ">=3.4.0"
+    }
+}
