@@ -2,7 +2,8 @@
 
 namespace classes;
 
-class RankBM25 {
+class RankBM25 
+{
 
     public $results;
     public $terms;
@@ -35,15 +36,17 @@ class RankBM25 {
                 $score += self::scoreBM25($t, $d, $inverted_index);
                 self::nextDocTop($inverted_index);
             }
+            $temp_arr = array("doc_id" => $d, "score" => $score);
+            $this->results->insert($temp_arr);                
 
-            if ($this->results->isEmpty()) {
-                $temp_arr = array("doc_id" => $d, "score" => $score);
-                $this->results->insert($temp_arr);                
-            } else if ($score > $this->results->top()["score"]) {
-                // print("here\n");
-                $temp_arr = array("doc_id" => $d, "score" => $score);
-                $this->results->insert($temp_arr);
-            }
+            // if ($this->results->isEmpty()) {
+            //     $temp_arr = array("doc_id" => $d, "score" => $score);
+            //     $this->results->insert($temp_arr);                
+            // } else if ($score > $this->results->top()["score"]) {
+            //     // print("here\n");
+            //     $temp_arr = array("doc_id" => $d, "score" => $score);
+            //     $this->results->insert($temp_arr);
+            // }
         }
         return $this->results;
     }

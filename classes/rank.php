@@ -32,10 +32,13 @@ class Rank
         foreach ($this->results as $result) {
             $i++;
             print("Rank #$i"." Doc ID: ".$result["document"]." Score: ".$result["score"]."\n");
+            if ($i == 20) {
+                break;
+            }
         }
     }
 
-    public function cosineRank($terms, $k_docs, &$inverted_index) 
+    public function cosineRank($terms, $k_docs = 20, &$inverted_index) 
     {
         self::calcAllTfIdf($inverted_index, $inverted_index->num_of_docs);
         self::calcAllVecLength($inverted_index, $inverted_index->num_of_docs);
@@ -43,16 +46,13 @@ class Rank
 
         $j = 0;
         $results = array();
-
         $result = self::cosMin($terms, -1, 0, $inverted_index);
         $temp = explode(":", $result);
         $doc_id = $temp[0];
         $pos = $temp[1];
-
         if ($doc_id == INF) {
             debugPrint("Error: doc_id is INF");
         }
-
         $q = implode(" ", $terms);
         while ($doc_id != "INF") {
             $results[$j]["document"] = $doc_id;
@@ -131,6 +131,7 @@ class Rank
     public function calcAllTfs(&$inverted_index, $num_docs) 
     {
         $terms = array_keys($inverted_index->postings);
+        $t_tf = 0;
         foreach ($terms as $term) {
             for ($doc_id = 0; $doc_id < $num_docs; $doc_id++) {
                 $t_tf = self::calcTf($term, $doc_id, $inverted_index);
@@ -145,11 +146,9 @@ class Rank
         if (empty($this->term_idfs)) {
             self::calcAllIdfs($inverted_index);
         }
-
         if (empty($this->term_tfs)) {
             self::calcAllTfs($inverted_index, $num_docs);
         }
-
         $terms = array_keys($inverted_index->postings);
         foreach ($terms as $term) {
             for ($doc_id = 0; $doc_id < $num_docs; $doc_id++) {
@@ -171,11 +170,11 @@ class Rank
     public function calcTf($t, $doc_id, &$inverted_index)
     {
         if ($inverted_index->postings[$t][$doc_id] != null) {
-            $f_t_d = 1 + log(count($inverted_index->postings[$t][$doc_id], 2));
+            printf(count($inverted_index->postings[$t][$doc_id])."\n");
+            return 1 + log(count($inverted_index->postings[$t][$doc_id], 2));
         } else {
-            $f_t_d = 0;
+            return 0;
         }
-        return $f_t_d;
     }
 
     public function createQueryVector($q)
@@ -213,8 +212,7 @@ class Rank
         $d = $this->doc_tfs_idfs[$doc_id];
 
         if (count($d) != count($q)) {
-            self::printDebug("ERROR: vector lengths are different\n");
-            return -1;
+            self::printDebug("WARN: vector lengths are different, q = ".count($q)." d = ".count($d)."\n");
         }
         $keys = array_keys($d);
         $numerator = 0;
