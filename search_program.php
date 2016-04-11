@@ -10,7 +10,7 @@ use seekquarry\yioop\library\processors\HtmlProcessor;
 use classes\invertedindex as InvertedIndex;
 use classes\rankbm25 as RankBM25;
 use classes\rankbm25f as RankBM25f;
-use classes\rank as Rank;
+use classes\cosinerank as RankCosine;
 use classes\humanrankings as HumanRanking;
 
 spl_autoload_register();
@@ -36,7 +36,13 @@ if (count($argv) == 6) {
     $args["alpha"] = 0.5;
 }
 
+// lower query terms
+$args["query"] = strtolower($args["query"]);
+
+// get list of docs from folder
 $doc_files = glob($args["files_dir"]."/*.html", GLOB_NOSORT);
+
+// set terms array
 $terms = explode(" ", $args["query"]);
 
 // case: chargram selected
@@ -49,42 +55,50 @@ if ($args["tokenization_method"] == "chargram") {
         $terms[$i] = $result[0];
     }
 }
-
-// get human rankings lists
-$dir_base_name = basename($args["files_dir"]);
-$human_rank = new HumanRanking();
-// get human rankings based on basename of folder directory, "e.g. election"
-$human_rankings = $human_rank->getRanks($dir_base_name);
-
-
 // setup Inverted Index
 if ($args["ranking_method"] == "bm25") {
     $inverted_index = readHtmlFiles($doc_files, $args["tokenization_method"]);
     $inverted_index = $inverted_index["desc"];
     $rankBM25 = new RankBM25($inverted_index);
-    $results_heap = $rankBM25->rankBM25WithHeaps($terms, 10, $inverted_index);
-    $results_heap->printHeap();
+    $results_heap = $rankBM25->rankBM25WithHeaps($terms, 20, $inverted_index);
+    // this breaks heap? rewind() and top() don't seem to fix
+    // $results_heap->printHeap();
+
+    $ranking_array = $results_heap->getHeapAsArray();
 
 } else if ($args["ranking_method"] == "bm25f") {
     $inverted_indices = readHtmlFiles($doc_files, $args["tokenization_method"]);
+
     $inverted_index_title = $inverted_indices["title"];
     $inverted_index_desc = $inverted_indices["desc"];
+
     $rankBM25f = new RankBM25f($inverted_index_title);
-
     // $terms = explode(" ", $args["query"]);
+    $results_heap = $rankBM25f->rankBM25fHtml($terms, $args["alpha"], 20, $inverted_index_title, $inverted_index_desc);
+    // $results_heap->printHeap();
 
-    $results_heap = $rankBM25f->rankBM25fHtml($terms, $args["alpha"], 10, $inverted_index_title, $inverted_index_desc);
-    $results_heap->printHeap();
+    $ranking_array = $results_heap->getHeapAsArray();
 
 } else if ($args["ranking_method"] == "cosine") {
     $inverted_index = readHtmlFiles($doc_files, $args["tokenization_method"]);
     $inverted_index = $inverted_index["desc"];
-    $rank = new Rank();
+    $rank = new RankCosine();
     $rank->cosineRank($terms, 20, $inverted_index);
     $rank->printResults();
 
+    $ranking_array = $rank->getRankedArray();
 }
 
+// Evaluation
+
+// get human rankings lists
+$dir_base_name = basename($args["files_dir"]);
+$human_rank = new HumanRanking();
+
+// get human rankings based on basename of folder directory, "e.g. election"
+$human_rankings = $human_rank->getRanks($dir_base_name);
+// print($human_rank->computePiScore($human_rankings, $ranking_array)."\n");
+print("Alpha: ".$args["alpha"].", PiScore: ".$human_rank->computePiScore($human_rankings, $ranking_array)."\n");
 
 function readHtmlFiles($doc_files, $tok_method)
 {

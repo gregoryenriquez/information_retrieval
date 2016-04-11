@@ -31,7 +31,6 @@ class RankBM25f
             $temp_arr = array("term" => $term, "next_doc" => $next);
             $this->terms->insert($temp_arr);
         }
-
         while (true) {
             $d = explode(":", $this->terms->top()["next_doc"])[0];
             if ($d >= $this->num_of_docs) {

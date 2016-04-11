@@ -22,6 +22,7 @@ class RankHeap extends \SplMaxHeap
 
     public function printHeap() 
     {   
+        $this->rewind();
         $i = 0;
         while ($this->valid()) {
             $i++;
@@ -31,5 +32,22 @@ class RankHeap extends \SplMaxHeap
             print("Rank #$i Doc ID: $doc_id, Score: $score\n");
             $this->next();
         }
+    }
+
+    public function getHeapAsArray() {
+        $this->rewind();
+        $tmp = array();
+        $i = 0;
+        while ($this->valid()) {
+            $i++;
+            $node = $this->current();
+            $doc_id = $node["doc_id"];
+            $score = $node["score"];
+            $tmp[] = array("rank" => $i, "doc_id" => $doc_id, "score" => $score);
+            print("Rank #$i Doc ID: $doc_id, Score: $score\n");
+
+            $this->next();
+        } 
+        return $tmp;
     }
 }
