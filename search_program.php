@@ -19,7 +19,12 @@ require_once "vendor/autoload.php";
 
 set_time_limit(0);
 
-// positional args: some_dir query ranking_method tokenization_method
+if (count($argv) < 5) {
+    print("Insufficient arguments: some_dir query ranking_method tokenization_method [alpha]\n");
+    exit(1);
+}
+
+// positional args: some_dir query ranking_method tokenization_method alpha
 $args = array("files_dir" => $argv[1], "query" => $argv[2], "ranking_method" => $argv[3], "tokenization_method" => $argv[4]);
 
 if (count($argv) == 6) {

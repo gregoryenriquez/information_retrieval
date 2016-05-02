@@ -79,7 +79,7 @@ class RankBM25
     public function calcIdf($t, &$inverted_index)
     {
         $num_of_docs = $inverted_index->num_of_docs;
-        $docs_with_term = count($inverted_index->postings[$t]);
+        $docs_with_term = count(array_keys($inverted_index->postings[$t]));
         $tmp = floatval($num_of_docs/$docs_with_term);
         return log($tmp, 2);
     }
@@ -87,7 +87,7 @@ class RankBM25
     public function tfBM25($f_t_d, $k, $b, $l_d, $l_avg)
     {
         $numerator = $f_t_d * ($k + 1);
-        $denominator = $f_t_d + $k * ((1 - $b) + b * ($l_d/$l_avg));
+        $denominator = $f_t_d + $k * ((1 - $b) + $b * ($l_d/$l_avg));
         return $numerator / $denominator;
     }
 
