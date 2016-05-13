@@ -2,11 +2,17 @@
 
 namespace classes;
 
+use classes\gammacode as GammaCode;
+
 class InvertedIndex 
 {
 
     const DEBUG = true;
     public $postings;
+    public $delta_postings;
+    public $string_dict;
+    public $string_dict_pos;
+    public $string_dict_indices;
     public $first_posts;
     public $last_posts;
     public $postings_sizes;
@@ -14,6 +20,7 @@ class InvertedIndex
     // public $formatted_data;
     public $avg_doc_length;
     public $doc_lengths;
+    public $delta_table;
 
     function __construct() {
         $this->postings = array();
@@ -21,6 +28,12 @@ class InvertedIndex
         $this->num_of_docs = 0;
         $this->avg_doc_length = 0;
         $this->doc_lengths = array();
+        $this->delta_postings = array();
+        $this->delta_table = array();
+        $this->string_dict = "";
+        $this->string_dict_pos = 0;
+        $this->string_dict_indices = array();
+        $this->string_dict_indices[] = 0;
     }
 
     function addTerm($t, $doc_id, $position) 
@@ -43,6 +56,101 @@ class InvertedIndex
 
         $this->postings_sizes[$t][$doc_id]++;
         $this->last_posts[$t] = "$doc_id:$position";
+    }
+
+    function convertToDeltaOffsets()
+    {
+        $terms = array_keys($this->postings);
+        foreach($terms as $term) {
+            $new_term = array();
+
+            $doc_ids = array_keys($this->postings[$term]);
+            foreach ($doc_ids as $doc_id) {
+                $tmp = self::off2Delta($this->postings[$term][$doc_id]);
+                $new_term[$doc_id] = $tmp;
+                // $this->postings[$term][$doc_id] = $tmp;
+            }
+            $this->delta_postings[$term] = $new_term;
+        }
+    }
+
+    function off2Delta($offsets) 
+    {
+        $delta_offsets = array();
+        for ($i = 0; $i < count($offsets); $i++) {
+            if ($i == 0) {
+                $delta_offsets[] = $offsets[$i];
+                self::addToDeltaTable($offsets[$i]);
+            } else {
+                $tmp_delta = $offsets[$i] - $offsets[$i - 1];
+                $delta_offsets[] = $tmp_delta;
+                self::addToDeltaTable($tmp_delta);
+            }
+        }
+        return $delta_offsets;
+    }
+
+    function addToDeltaTable($delta) 
+    {
+        if ($this->delta_table[$delta] == null) {
+            $this->delta_table[$delta]["value"] = $delta;
+            $this->delta_table[$delta]["count"] = 1;
+        } else {
+            $this->delta_table[$delta]["count"]++;
+        }
+    }
+
+    function generateBinaryPostings($code_table)
+    {
+        $deltas = array();
+        $terms = array_keys($this->delta_postings);
+        foreach($terms as $term) {
+            $tmp = "";
+            $doc_ids = array_keys($this->delta_postings[$term]);
+            foreach($doc_ids as $doc_id) {
+                $tmp = $tmp . ":" . strval($doc_id) . ":";
+                for ($i = 0; $i < count($this->delta_postings[$term][$doc_id]); $i++) {
+                    // var_dump($code_table->codes[5]);
+                    // var_dump($this->delta_postings[$term][$doc_id][$i]);
+                    // var_dump($code_table->getCode($this->delta_postings[$term][$doc_id][$i]));
+
+                    // print("----\n");
+                    $val = $code_table->codes[intval($this->delta_postings[$term][$doc_id][$i])];
+                    $tmp = $tmp . $val;
+                }
+            }
+            $deltas[]= $tmp;
+            $length = strlen($tmp);
+
+            $last_val = $this->string_dict_indices[count($this->string_dict_indices) - 1];
+
+            $this->string_dict_indices[] = $last_val + strlen($term) + strlen(strval($length));
+            $this->string_dict = $this->string_dict . $term . ($this->string_dict_pos + $length);
+            $this->string_dict_pos += $length;
+        }
+        return $deltas;
+    }
+
+    function createDocumentMaps()
+    {
+        $docs = array();
+
+        $terms = array_keys($this->postings);
+        foreach($terms as $term) {
+            $doc_ids = array_keys($this->postings[$term]);
+            foreach($doc_ids as $doc_id) {
+                if ($docs[$doc_id] == null) {
+                    $docs[$doc_id] = array();
+
+                }
+                if ($docs[$doc_id][$term] == null) {
+                    $docs[$doc_id][$term] = array("term" => $term, "frequency" => 0);
+                }
+                $docs[$doc_id][$term]["frequency"] = count($this->postings[$term][$doc_id]);
+            }
+        }
+
+        return $docs;
     }
 
     public function sortPostings() 
@@ -245,6 +353,11 @@ class InvertedIndex
         } else if ($current_pos < $mid_val) {
             return self::binarySearch($t, $low, $mid, $current_doc, $current_pos);
         }
+    }
+
+    public function writeToDisk($file_path) 
+    {
+
     }
 
     public function dump() 
