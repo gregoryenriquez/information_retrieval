@@ -1,7 +1,6 @@
 <?php
 
 
-
 namespace genriquez\search_program;
 
 use seekquarry\yioop\library\PhraseParser; 
@@ -20,33 +19,43 @@ require_once "vendor/autoload.php";
 
 set_time_limit(0);
 
+if (count($argv) < 2) {
+    print("Insufficient arguments: some_dir index_filename\n");
+    exit(1);
+}
+
 // positional args: some_dir index_filename
 $args = array("files_dir" => $argv[1], "index_filename" => $argv[2]);
 
 
+
 // get list of docs from folder
 $doc_files = glob($args["files_dir"]."/*.txt", GLOB_NOSORT);
+
 $inverted_index = readFiles($doc_files);
+$avg_doc_length = $inverted_index->calcAvgDocLength();
 // var_dump($inverted_index);
 
 $inverted_index->convertToDeltaOffsets();
 // var_dump($inverted_index->delta_postings);
 // var_dump($inverted_index->delta_table);
 
-$gamma = new GammaCode($inverted_index->delta_table);
+$gamma = new GammaCode();
+$gamma->mapCodes($inverted_index->delta_table);
 // var_dump($gamma->codes);
 
 $deltas = $inverted_index->generateBinaryPostings($gamma);
-// var_dump($deltas);
+var_dump($deltas);
+$deltas = implode($deltas);
 
 // var_dump($inverted_index->string_dict);
 
 // var_dump($inverted_index->string_dict_indices);
 
 $document_maps = $inverted_index->createDocumentMaps();
+// var_dump($document_maps);
 
-$content = array("index" => $inverted_index->string_dict_indices, "string_dict" => $inverted_index->string_dict, "postings" => $deltas, "document_maps" => $document_maps);
-
+$content = array("index" => $inverted_index->string_dict_indices, "string_dict" => $inverted_index->string_dict, "postings" => $deltas, "document_maps" => $document_maps, "codes_map" => $gamma, "avg_doc_length" => $avg_doc_length);
 var_dump($content);
 
 $content = serialize($content);
@@ -86,7 +95,7 @@ function readFiles($doc_files)
         $line = preg_replace('!\s+!', ' ', $line);
         // lowercase tokens
         $line = strtolower($line);
-        $word_counter = 0;
+        $word_counter = 1;
         // remove punctuations and special characters
         $line = preg_replace('/[^A-Za-z0-9 ]/', "", $line);
 
@@ -104,7 +113,6 @@ function readFiles($doc_files)
     }
     $inverted_index->sortPostings();
     print("Average doc length: ".$inverted_index->calcAvgDocLength()."\n");
-
     return $inverted_index;
 }
 ?>

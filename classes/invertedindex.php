@@ -9,18 +9,19 @@ class InvertedIndex
 
     const DEBUG = true;
     public $postings;
-    public $delta_postings;
-    public $string_dict;
-    public $string_dict_pos;
-    public $string_dict_indices;
+
     public $first_posts;
     public $last_posts;
     public $postings_sizes;
     public $num_of_docs;
-    // public $formatted_data;
     public $avg_doc_length;
     public $doc_lengths;
+
     public $delta_table;
+    public $delta_postings;
+    public $string_dict;
+    public $string_dict_pos;
+    public $string_dict_indices;
 
     function __construct() {
         $this->postings = array();
@@ -119,12 +120,13 @@ class InvertedIndex
                     $tmp = $tmp . $val;
                 }
             }
-            $deltas[]= $tmp;
+            $deltas[] = $tmp;
             $length = strlen($tmp);
 
             $last_val = $this->string_dict_indices[count($this->string_dict_indices) - 1];
 
-            $this->string_dict_indices[] = $last_val + strlen($term) + strlen(strval($length));
+            // print("term: $term last val: $last_val term length: " . strlen($term) . " posting length: " . strlen(strval($this->string_dict_pos + $length)) . "\n");
+            $this->string_dict_indices[] = $last_val + strlen($term) + strlen(strval($this->string_dict_pos + $length));
             $this->string_dict = $this->string_dict . $term . ($this->string_dict_pos + $length);
             $this->string_dict_pos += $length;
         }
@@ -134,6 +136,7 @@ class InvertedIndex
     function createDocumentMaps()
     {
         $docs = array();
+        $avg_doc_length = 0;
 
         $terms = array_keys($this->postings);
         foreach($terms as $term) {
@@ -141,15 +144,22 @@ class InvertedIndex
             foreach($doc_ids as $doc_id) {
                 if ($docs[$doc_id] == null) {
                     $docs[$doc_id] = array();
-
+                    $docs[$doc_id]["length"] = 0;
                 }
                 if ($docs[$doc_id][$term] == null) {
                     $docs[$doc_id][$term] = array("term" => $term, "frequency" => 0);
                 }
                 $docs[$doc_id][$term]["frequency"] = count($this->postings[$term][$doc_id]);
+                $docs[$doc_id]["length"] += count($this->postings[$term][$doc_id]);
             }
         }
 
+        foreach($docs as $doc) {
+            $avg_doc_length += $doc["length"];
+        }
+
+        $avg_doc_length = $avg_doc_length / count($docs);
+        $doc["avg_length"] = $avg_doc_length;
         return $docs;
     }
 
